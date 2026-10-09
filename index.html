@@ -72,6 +72,9 @@ nav.idx button:disabled{opacity:.5;cursor:wait}
 .lam-wrap svg{display:block;width:100%;min-width:640px;height:auto}
 nav.idx button.prim{background:var(--naranja);border-color:var(--naranja);color:#fff}
 nav.idx button.prim:hover{background:var(--tinta);border-color:var(--tinta)}
+.estado-presion{margin-top:8px;padding:6px 9px;font-size:12px;line-height:1.45;border-left:4px solid var(--gris-claro);background:#F7F7F7}
+.estado-presion.hid{border-left-color:var(--naranja);background:#FFF3EC}
+.estado-presion.aci{border-left-color:var(--tinta)}
 .fuente-preset{font-size:11.5px;color:var(--gris);margin-top:6px}
 a{color:var(--tinta);text-decoration-color:var(--naranja)}
 .mal{color:var(--mal);font-weight:900}
@@ -694,6 +697,14 @@ const SCHEMA=[
 ];
 function actualizarPie(){const el=document.getElementById("pie-firma");if(!el)return;const v=(x,d)=>escX((x||"").trim()||d);
   el.innerHTML=`<span class="nota">DISEÑO DE LA FORMALETA</span><br><b>${v(D.disenador,"Nombre del ingeniero diseñador")}</b>${(D.matricula||"").trim()?" · M.P. "+escX(D.matricula.trim()):""}<br><span class="nota">INGENIERO DE LA OBRA</span><br><b>${v(D.ing_obra,"Nombre del ingeniero de la obra")}</b>`}
+function actualizarEstadoPresion(){
+  const el=document.getElementById("estado-presion");if(!el)return;
+  let pr;try{pr=presionLateral(D.columna.H_mm/1000,concretoDe(D),"columna")}catch(e){el.textContent="";return}
+  if(pr.hidrostatica){el.className="estado-presion hid";
+    el.innerHTML=`<b>Presión hidrostática γ·h</b> (la app la aplica sola): ${pr.razones.length?escX(pr.razones.join("; ")):"la ecuación de ACI 347 da más que γ·h"}. T, R y Cc no intervienen.`}
+  else{el.className="estado-presion aci";
+    el.innerHTML=`<b>ACI 347</b>: ${escX(pr.regla)} = ${f1(pr.p_max)} kPa en la columna. Con asentamiento mayor a 175 mm la app pasa sola a γ·h.`}
+}
 function nombreProy(){return `${D.proyecto||"Nombre del proyecto"} · ${D.direccion||"Dirección"}`}
 function tablaCant(rows){return tabla(["Elemento","Cantidad","Unidad"],rows.map(([e,v,u])=>[e,typeof v==="number"&&!Number.isInteger(v)?f2(v):v,u]))+`<div class="nota">Cantidades que salen de las separaciones calculadas; no incluyen piezas de esquina, cuñas ni reposición.</div>`}
 function getp(path){return path.split(".").reduce((o,k)=>o==null?o:o[k],D)}
@@ -725,6 +736,7 @@ function buildForm(){
       }
       fs.appendChild(row);
     });
+    if(tit==="Concreto"){const dv=document.createElement("div");dv.id="estado-presion";dv.className="estado-presion";fs.appendChild(dv)}
     el.appendChild(fs);
   });
   syncForm();
@@ -972,6 +984,7 @@ function recalcular(){
 }
 function render(){
   document.body.className=D.sistema;
+  actualizarEstadoPresion();
   if(D.sistema==="metal"){renderMetalTodo();renderLaminas();return}
   $("#sub-proyecto").textContent=nombreProy();actualizarPie();
   const err=[];
